@@ -9,7 +9,6 @@ using CsvHelper;
 using System.IO;
 using Nop.Services.Common;
 using Nop.Core.Domain.Tasks;
-using CsvHelper.Configuration.Attributes;
 
 namespace Nop.Plugin.Misc.FacebookStoreCsv
 {
@@ -30,76 +29,63 @@ namespace Nop.Plugin.Misc.FacebookStoreCsv
 
         public void Execute()
         {
-            var products = dbContext.EntityFromSql<Product>("ProductLoadAllPaged").Where(m => m.StockQuantity > 0).ToList();
+            var products = dbContext.EntityFromSql<Product>("ProductLoadAllPaged").Where(m => m.StockQuantity > FacebookStoreCsvDefaults.MinimumStockQuantity).ToList();
+
             var result = products
-                .Select(m => new FacebookStore
+                .Select(m => new FacebookStoreModel
                 {
                     Id = m.Sku,
                     Title = m.Name,
                     Description = m.ShortDescription,
                     Inventory = m.StockQuantity,
-                    Price = m.Price + " EUR",
-                    Link = "https://cherryberry.gr/" + urlRecordService.GetSeName(m),
+                    Price = $"{m.Price} {FacebookStoreCsvDefaults.StoreCurrency}",
+                    Link = FacebookStoreCsvDefaults.BaseUrl + urlRecordService.GetSeName(m),
                     ImageLink = pictureService.GetPictureUrl(m.ProductPictures.OrderBy(p=>p.DisplayOrder).First().PictureId),
                     ProductType = m.ProductCategories.FirstOrDefault()?.Category.Name
                 }).ToList();
 
-            if (!Directory.Exists(@"wwwroot/facebookstore"))
+            if (!Directory.Exists(FacebookStoreCsvDefaults.DirectoryToSave))
             {
-                var d = Directory.CreateDirectory(@"wwwroot/facebookstore");
+               Directory.CreateDirectory(FacebookStoreCsvDefaults.DirectoryToSave);
             }
-            if (!File.Exists(@"wwwroot/facebookstore/facebookstore.csv"))
+            if (!File.Exists(FacebookStoreCsvDefaults.FilePathToSave))
             {
-                var file = File.Create(@"wwwroot/facebookstore/facebookstore.csv");
+                var file = File.Create(FacebookStoreCsvDefaults.FilePathToSave);
                 file.Close();
             }
-            using (var writer = new StreamWriter(@"wwwroot/facebookstore/facebookstore.csv"))
+            using (var writer = new StreamWriter(FacebookStoreCsvDefaults.FilePathToSave))
             using (var csv = new CsvWriter(writer))
             {
                 csv.Configuration.HasHeaderRecord = true;
                 csv.WriteRecords(result);
             }
         }
+
         public override void Install()
         {
-            if (scheduleTaskService.GetTaskByType("Nop.Plugin.Misc.FacebookStoreCsv.CsvProcessor") == null)
+            if (scheduleTaskService.GetTaskByType(FacebookStoreCsvDefaults.TaskName) == null)
             {
                 scheduleTaskService.InsertTask(new ScheduleTask
                 {
                     Enabled = true,
-                    Name = "Generate Facebook Csv",
-                    Type = "Nop.Plugin.Misc.FacebookStoreCsv.CsvProcessor",
-                    Seconds = 1 * 24 * 60 * 60,
+                    Name = FacebookStoreCsvDefaults.TaskPublicName,
+                    Type = FacebookStoreCsvDefaults.TaskName,
+                    Seconds = FacebookStoreCsvDefaults.IntervalSecondsForTask,
                 });
             }
 
             base.Install();
         }
-    }
 
-    public class FacebookStore
-    {
-        [Name("id")]
-        public string Id { get; set; }
-        [Name("title")]
-        public string Title { get; set; }
-        [Name("description")]
-        public string Description { get; set; }
-        [Name("availability")]
-        public string Availability => "in stock";
-        [Name("inventory")]
-        public int Inventory { get; set; }
-        [Name("condition")]
-        public string Condition => "new";
-        [Name("price")]
-        public string Price { get; set; }
-        [Name("link")]
-        public string Link { get; set; }
-        [Name("image_link")]
-        public string ImageLink { get; set; }
-        [Name("brand")]
-        public string Brand => "Cherry Berry";
-        [Name("product_type")]
-        public string ProductType { get; set; }
+        public override void Uninstall()
+        {
+            var task = scheduleTaskService.GetTaskByType(FacebookStoreCsvDefaults.TaskName);
+            if (task != null)
+            {
+                scheduleTaskService.DeleteTask(task);
+            }
+              
+            base.Uninstall();
+        }
     }
 }

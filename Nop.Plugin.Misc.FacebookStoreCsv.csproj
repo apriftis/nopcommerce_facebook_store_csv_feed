@@ -36,6 +36,12 @@
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="12.2.3" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="FacebookStoreCsvDefaults.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
   <!-- This target execute after "Build" target -->
   <Target Name="NopTarget" AfterTargets="Build">
     <!-- Delete unnecessary libraries from plugins path -->
