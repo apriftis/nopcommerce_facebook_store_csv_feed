@@ -9,6 +9,9 @@ using CsvHelper;
 using System.IO;
 using Nop.Services.Common;
 using Nop.Core.Domain.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Nop.Services.Directory;
 
 namespace Nop.Plugin.Misc.FacebookStoreCsv
 {
@@ -18,18 +21,36 @@ namespace Nop.Plugin.Misc.FacebookStoreCsv
         private readonly IUrlRecordService urlRecordService;
         private readonly IPictureService pictureService;
         private readonly IScheduleTaskService scheduleTaskService;
+        private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly ICurrencyService currencyService;
 
-        public CsvProcessor(IDbContext dbContext, IUrlRecordService urlRecordService, IPictureService pictureService, IScheduleTaskService scheduleTaskService)
+        public CsvProcessor(
+            IDbContext dbContext, 
+            IUrlRecordService urlRecordService, 
+            IPictureService pictureService, 
+            IScheduleTaskService scheduleTaskService, 
+            IHttpContextAccessor httpContextAccessor, 
+            ICurrencyService currencyService)
         {
             this.dbContext = dbContext;
             this.urlRecordService = urlRecordService;
             this.pictureService = pictureService;
             this.scheduleTaskService = scheduleTaskService;
+            this.httpContextAccessor = httpContextAccessor;
+            this.currencyService = currencyService;
         }
 
         public void Execute()
         {
-            var products = dbContext.EntityFromSql<Product>("ProductLoadAllPaged").Where(m => m.StockQuantity > FacebookStoreCsvDefaults.MinimumStockQuantity).ToList();
+            var products = dbContext.EntityFromSql<Product>("ProductLoadAllPaged")
+                                    .Where(m => m.StockQuantity > FacebookStoreCsvDefaults.MinimumStockQuantity)
+                                    .ToList();
+
+            var currenctyCode = currencyService.GetAllCurrencies()
+                                                .OrderBy(a => a.DisplayOrder)
+                                                .First()
+                                                .CurrencyCode
+                                                .ToUpper();
 
             var result = products
                 .Select(m => new FacebookStoreModel
@@ -38,8 +59,8 @@ namespace Nop.Plugin.Misc.FacebookStoreCsv
                     Title = m.Name,
                     Description = m.ShortDescription,
                     Inventory = m.StockQuantity,
-                    Price = $"{m.Price} {FacebookStoreCsvDefaults.StoreCurrency}",
-                    Link = FacebookStoreCsvDefaults.BaseUrl + urlRecordService.GetSeName(m),
+                    Price = $"{m.Price} {currenctyCode}",
+                    Link = $"{httpContextAccessor.HttpContext.Request.Scheme}://{httpContextAccessor.HttpContext.Request.Host}/{urlRecordService.GetSeName(m)}",
                     ImageLink = pictureService.GetPictureUrl(m.ProductPictures.OrderBy(p=>p.DisplayOrder).First().PictureId),
                     ProductType = m.ProductCategories.FirstOrDefault()?.Category.Name
                 }).ToList();
@@ -48,6 +69,7 @@ namespace Nop.Plugin.Misc.FacebookStoreCsv
             {
                Directory.CreateDirectory(FacebookStoreCsvDefaults.DirectoryToSave);
             }
+
             if (!File.Exists(FacebookStoreCsvDefaults.FilePathToSave))
             {
                 var file = File.Create(FacebookStoreCsvDefaults.FilePathToSave);

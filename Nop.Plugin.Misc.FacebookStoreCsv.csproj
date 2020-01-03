@@ -3,7 +3,7 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <Copyright>SOME_COPYRIGHT</Copyright>
     <Company>Facebook Csv</Company>
-    <Authors>Alex Priftis</Authors>
+    <Authors>apriftis@outlook.com</Authors>
     <PackageLicenseUrl>PACKAGE_LICENSE_URL</PackageLicenseUrl>
     <PackageProjectUrl>PACKAGE_PROJECT_URL</PackageProjectUrl>
     <RepositoryUrl>REPOSITORY_URL</RepositoryUrl>
