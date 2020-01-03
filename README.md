@@ -15,7 +15,7 @@ https://joshclose.github.io/CsvHelper/
 # Instrucation
 Install in your website.
 Run task
-get your file at [yourdoman]/facebookstore/facebookstore/facebookstore.csv
+get your file at [yourdoman]/facebookstore/facebookstore.csv
 
 # Contact me
 If you need any help please contact me here or
